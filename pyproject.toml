@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "neetcode-srs"
+version = "0.1.0"
+description = "Daily spaced-repetition CLI over the NeetCode 250."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+neetcode = "neetcode_srs.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["neetcode_srs"]
