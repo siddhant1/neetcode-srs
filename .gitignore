@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 data/state.db
 data/state.db-journal
+data/config.json

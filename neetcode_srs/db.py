@@ -117,10 +117,22 @@ def get_card(conn: sqlite3.Connection, card_id: str) -> Card | None:
 
 def reviewed_today(conn: sqlite3.Connection, today: date) -> Card | None:
     row = conn.execute(
-        "SELECT * FROM cards WHERE last_reviewed = ?",
+        "SELECT * FROM cards WHERE last_reviewed = ? ORDER BY id LIMIT 1",
         (today.isoformat(),),
     ).fetchone()
     return _row_to_card(row) if row else None
+
+
+def count_reviewed_on(conn: sqlite3.Connection, day: date) -> int:
+    """Count distinct cards answered (y/n/e — not skip) on a given day."""
+    row = conn.execute(
+        """
+        SELECT COUNT(DISTINCT card_id) FROM reviews
+        WHERE date(reviewed_at) = ? AND outcome IN ('y','n','e')
+        """,
+        (day.isoformat(),),
+    ).fetchone()
+    return row[0]
 
 
 def pick_due(conn: sqlite3.Connection, today: date) -> Card | None:

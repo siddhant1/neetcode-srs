@@ -46,15 +46,23 @@ neetcode stats      # should show: 250 total · 250 new
 ## Daily use
 
 ```bash
-neetcode            # show today's card, prompts y / n / skip
+neetcode            # show today's card, prompts y / n / e / skip
 neetcode stats      # deck progress
 neetcode history 20 # last 20 reviews
 neetcode skip       # postpone today's card one day
 neetcode setup --refresh   # re-fetch the problem list if NeetCode updates it
 ```
 
-One card per calendar day. Once you answer, `neetcode` on the same day will just
-tell you you're done.
+One card per calendar day by default. Run `neetcode` again after answering
+and it tells you you're done. Want more per day?
+
+```bash
+neetcode config daily 3   # now you can do 3 cards/day
+neetcode config           # show current config
+```
+
+Each invocation still shows one card — `daily` just controls how many times
+you can run it before it blocks you until tomorrow.
 
 ## Scheduling rules
 

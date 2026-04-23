@@ -5,12 +5,13 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-from neetcode_srs import db, problems, selector
+from neetcode_srs import config, db, problems, selector
 from neetcode_srs.srs import schedule
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DB_PATH = DATA_DIR / "state.db"
 CACHE_PATH = DATA_DIR / "neetcode250.json"
+CONFIG_PATH = DATA_DIR / "config.json"
 
 
 # --- output helpers -------------------------------------------------------
@@ -97,18 +98,22 @@ def cmd_stats(args: argparse.Namespace) -> int:
 def cmd_today(args: argparse.Namespace) -> int:
     conn = db.connect(DB_PATH)
     today = _parse_today(args.today)
+    cfg = config.load(CONFIG_PATH)
+    target = cfg["daily_target"]
 
-    pick = selector.pick_today(conn, today)
+    pick = selector.pick_today(conn, today, daily_target=target)
     if pick.kind == "empty":
         print("Deck is empty. Run `neetcode setup` first.")
         return 1
-    if pick.kind == "already_done":
-        c = pick.already_done_card
-        assert c is not None
-        print(f"\n  Already done today: {_color(c.title, BOLD)}. Come back tomorrow.\n")
+    if pick.kind == "quota_hit":
+        print(f"\n  Done for today: {pick.done_today}/{target} cards. "
+              f"Come back tomorrow.")
+        print(f"  {DIM}Want more? `neetcode config daily N`{RESET}\n")
         return 0
     assert pick.card is not None
 
+    if target > 1:
+        print(f"  {DIM}card {pick.done_today + 1} of {target} today{RESET}")
     _print_card(pick.card, pick.kind)
     print(f"  {DIM}y = solved · n = couldn't solve · e = trivially easy · skip{RESET}")
     prompt = f"  {_color('Answer', BOLD)} [y/n/e/skip] > "
@@ -167,11 +172,46 @@ def cmd_history(args: argparse.Namespace) -> int:
     return 0
 
 
+_CONFIG_ALIASES = {"daily": "daily_target"}
+
+
+def cmd_config(args: argparse.Namespace) -> int:
+    cfg = config.load(CONFIG_PATH)
+    if args.key is None:
+        print()
+        for k, v in cfg.items():
+            print(f"  {k} = {v}")
+        print()
+        return 0
+    key = _CONFIG_ALIASES.get(args.key, args.key)
+    if args.value is None:
+        print(cfg.get(key, "(unset)"))
+        return 0
+    coerced: int | str = args.value
+    if key == "daily_target":
+        try:
+            coerced = int(args.value)
+        except ValueError:
+            print(f"  daily_target must be an integer, got {args.value!r}")
+            return 2
+        if coerced < 1:
+            print("  daily_target must be >= 1")
+            return 2
+    try:
+        updated = config.set_key(CONFIG_PATH, key, coerced)
+    except KeyError as e:
+        print(f"  {e}")
+        return 2
+    print(f"  {key} = {updated[key]}")
+    return 0
+
+
 def cmd_skip(args: argparse.Namespace) -> int:
     conn = db.connect(DB_PATH)
     today = _parse_today(args.today)
-    pick = selector.pick_today(conn, today)
-    if pick.kind in ("empty", "already_done"):
+    cfg = config.load(CONFIG_PATH)
+    pick = selector.pick_today(conn, today, daily_target=cfg["daily_target"])
+    if pick.kind in ("empty", "quota_hit"):
         print("Nothing to skip.")
         return 0
     assert pick.card is not None
@@ -213,6 +253,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_skip = sub.add_parser("skip", parents=[common], help="Postpone today's card by one day.")
     p_skip.set_defaults(func=cmd_skip)
+
+    p_cfg = sub.add_parser("config", parents=[common],
+                           help="Show or set config. Example: `neetcode config daily 3`")
+    p_cfg.add_argument("key", nargs="?", help="Config key (e.g. 'daily' or 'daily_target').")
+    p_cfg.add_argument("value", nargs="?", help="New value (integer for daily_target).")
+    p_cfg.set_defaults(func=cmd_config)
 
     return p
 
