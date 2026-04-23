@@ -5,7 +5,7 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-from neetcode_srs import config, db, problems, selector
+from neetcode_srs import config, dashboard, db, problems, selector
 from neetcode_srs.srs import schedule
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -175,6 +175,18 @@ def cmd_history(args: argparse.Namespace) -> int:
 _CONFIG_ALIASES = {"daily": "daily_target"}
 
 
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    conn = db.connect(DB_PATH)
+    today = _parse_today(args.today)
+    if args.write_only:
+        path = dashboard.render_to_file(conn, today)
+        print(f"Wrote {path}")
+    else:
+        path = dashboard.open_dashboard(conn, today)
+        print(f"Opened {path}")
+    return 0
+
+
 def cmd_config(args: argparse.Namespace) -> int:
     cfg = config.load(CONFIG_PATH)
     if args.key is None:
@@ -253,6 +265,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_skip = sub.add_parser("skip", parents=[common], help="Postpone today's card by one day.")
     p_skip.set_defaults(func=cmd_skip)
+
+    p_dash = sub.add_parser("dashboard", parents=[common],
+                            help="Open a local HTML progress dashboard in your browser.")
+    p_dash.add_argument("--write-only", action="store_true",
+                        help="Write the HTML file but don't open a browser.")
+    p_dash.set_defaults(func=cmd_dashboard)
 
     p_cfg = sub.add_parser("config", parents=[common],
                            help="Show or set config. Example: `neetcode config daily 3`")

@@ -50,8 +50,13 @@ neetcode            # show today's card, prompts y / n / e / skip
 neetcode stats      # deck progress
 neetcode history 20 # last 20 reviews
 neetcode skip       # postpone today's card one day
+neetcode dashboard  # open an HTML progress report (heatmap, streak, etc.)
 neetcode setup --refresh   # re-fetch the problem list if NeetCode updates it
 ```
+
+The `dashboard` command generates a self-contained HTML file in your temp
+directory and opens it in your default browser — no server, no network
+beyond fonts.
 
 One card per calendar day by default. Run `neetcode` again after answering
 and it tells you you're done. Want more per day?
